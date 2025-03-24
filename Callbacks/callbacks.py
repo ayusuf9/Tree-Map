@@ -1240,54 +1240,112 @@ def register_callbacks(app):
         # Filter data for the selected security
         security_data = data[data['security_name'] == selected_security]
         
+        if security_data.empty:
+            # Return an informative figure if no data is found
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No data available for this security",
+                font=dict(size=20, color="#00294b"),
+                showarrow=False,
+                xref="paper", yref="paper",
+                x=0.5, y=0.5
+            )
+            fig.update_layout(
+                paper_bgcolor='white',
+                plot_bgcolor='white',
+                height=600
+            )
+            return fig
+        
         # Get the latest date for the selected security
         latest_date = security_data['Date'].max()
         latest_data = security_data[security_data['Date'] == latest_date]
         
-        # Group by country and calculate the exposure percentage
-        country_exposure = latest_data.groupby('country_exposure_name')['country_exposure_pct'].sum().reset_index()
+        # Instead of grouping and summing, just use the latest percentages directly
+        # This avoids summing across countries and only shows the latest values
+        country_exposure = latest_data[['country_exposure_name', 'country_exposure_pct']].copy()
+        
+        # Check if all exposure values are zero
+        if country_exposure.empty or country_exposure['country_exposure_pct'].sum() == 0:
+            fig = go.Figure()
+            fig.add_annotation(
+                text=f"No country exposure data for {selected_security.split(' (')[0]}",
+                font=dict(size=20, color="#00294b"),
+                showarrow=False,
+                xref="paper", yref="paper",
+                x=0.5, y=0.5
+            )
+            fig.update_layout(
+                paper_bgcolor='white',
+                plot_bgcolor='white',
+                height=600
+            )
+            return fig
+        
         country_exposure = country_exposure.sort_values('country_exposure_pct', ascending=False)
         
         # Create the treemap figure
-        fig = px.treemap(
-            country_exposure,
-            path=[px.Constant("All Countries"), 'country_exposure_name'],
-            values='country_exposure_pct',
-            color='country_exposure_pct',
-            color_continuous_scale='RdBu',
-            color_continuous_midpoint=np.median(country_exposure['country_exposure_pct']),
-            hover_data={'country_exposure_pct': ':.2f%'},
-        )
-        
-        # Security name without SEDOL for title
-        security_name = selected_security.split(' (')[0] if ' (' in selected_security else selected_security
-        
-        # Update layout
-        fig.update_layout(
-            title=dict(
-                text=f"Country Exposure for {security_name}",
-                font=dict(size=24, color="#00294b", weight='bold'),
-                x=0.5,
-                xanchor='center'
-            ),
-            margin=dict(t=50, l=25, r=25, b=25),
-            paper_bgcolor='white',
-            plot_bgcolor='white',
-            font=dict(family="'DM Sans', sans-serif", size=14),
-            coloraxis_colorbar=dict(
-                title="Exposure %",
-                tickformat='.2f%',
-                len=0.6,
-                thickness=20,
-                xanchor='left',
-                x=1.05
+        try:
+            fig = px.treemap(
+                country_exposure,
+                path=[px.Constant("All Countries"), 'country_exposure_name'],
+                values='country_exposure_pct',
+                color='country_exposure_pct',
+                color_continuous_scale='RdBu',
+                color_continuous_midpoint=np.median(country_exposure['country_exposure_pct']),
+                hover_data={'country_exposure_pct': ':.2f%'},
             )
-        )
-        
-        # Update hover template to show percentage
-        fig.update_traces(
-            hovertemplate='<b>%{label}</b><br>Exposure: %{value:.2f}%<extra></extra>',
-            texttemplate='%{label}<br>%{value:.2f}%'
-        )
-        
-        return fig
+            
+            # Security name without SEDOL for title
+            security_name = selected_security.split(' (')[0] if ' (' in selected_security else selected_security
+            
+            # Get the formatted date for display
+            date_str = latest_date.strftime('%Y-%m-%d')
+            
+            # Update layout
+            fig.update_layout(
+                title=dict(
+                    text=f"Country Exposure for {security_name} (as of {date_str})",
+                    font=dict(size=24, color="#00294b", weight='bold'),
+                    x=0.5,
+                    xanchor='center'
+                ),
+                margin=dict(t=50, l=25, r=25, b=25),
+                paper_bgcolor='white',
+                plot_bgcolor='white',
+                font=dict(family="'DM Sans', sans-serif", size=14),
+                coloraxis_colorbar=dict(
+                    title="Exposure %",
+                    tickformat='.2f%',
+                    len=0.6,
+                    thickness=20,
+                    xanchor='left',
+                    x=1.05
+                )
+            )
+            
+            # Update hover template to show percentage
+            fig.update_traces(
+                hovertemplate='<b>%{label}</b><br>Exposure: %{value:.2f}%<extra></extra>',
+                texttemplate='%{label}<br>%{value:.2f}%'
+            )
+            
+            return fig
+            
+        except Exception as e:
+            # Handle any errors during treemap creation
+            print(f"Error creating treemap: {str(e)}")
+            fig = go.Figure()
+            fig.add_annotation(
+                text=f"Error creating visualization: {str(e)}",
+                font=dict(size=16, color="#00294b"),
+                showarrow=False,
+                xref="paper", yref="paper",
+                x=0.5, y=0.5
+            )
+            fig.update_layout(
+                paper_bgcolor='white',
+                plot_bgcolor='white',
+                height=600
+            )
+            return fig
