@@ -182,21 +182,48 @@ def get_page3(
         'chart_container': {
             'display': 'flex',
             'flexDirection': 'column',
-            'gap': '20px',
-            'marginTop': '-14px'
+            'gap': '30px',
+            'marginTop': '10px'
         },
         'tabs_section': {
             'display': 'flex',
             'flexDirection': 'column',
             'marginTop': '20px'
         },
-        'chart': {'className': 'chart-item'},
+        'chart': {
+            'className': 'chart-item',
+            'backgroundColor': '#f9f9f9',
+            'borderRadius': '8px',
+            'padding': '15px',
+            'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+        },
         'chart_two': {
             'className': 'chart-item',
-            'marginTop': '-10px'
+            'backgroundColor': '#f9f9f9',
+            'borderRadius': '8px',
+            'padding': '15px',
+            'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+        },
+        'chart_header': {
+            'fontFamily': "'DM Sans', sans-serif",
+            'fontSize': '18px',
+            'fontWeight': 'bold',
+            'color': '#00294b',
+            'marginBottom': '10px',
+            'paddingBottom': '8px',
+            'borderBottom': '1px solid #e0e0e0'
+        },
+        'source_footer': {
+            'display': 'flex',
+            'justifyContent': 'space-between',
+            'padding': '10px',
+            'marginTop': '5px',
+            'borderTop': '1px solid #f0f0f0',
+            'backgroundColor': '#fcfcfc',
+            'borderRadius': '0 0 8px 8px'
         },
         'graph': {
-            'height': '600px',
+            'height': '550px',
             'max-width': '100%',
             'width': '100%',
             'margin-left': 'auto',
@@ -438,6 +465,10 @@ def get_page3(
                                                     html.Div(
                                                         style=styles['chart'],
                                                         children=[
+                                                            html.Div(
+                                                                "Country Revenue Exposure Over Time",
+                                                                style=styles['chart_header']
+                                                            ),
                                                             dcc.Graph(
                                                                 id='country-exposure-revenue-graph',
                                                                 config={
@@ -447,38 +478,38 @@ def get_page3(
                                                                     'displaylogo': False,
                                                                 },
                                                                 style=styles['graph']
-                                                            )
-                                                        ]
-                                                    ),
-                                                    html.Div(
-                                                        style={
-                                                            'display': 'flex',
-                                                            'justifyContent': 'space-between',
-                                                            'padding': '10px',
-                                                            'marginBottom': '40px'
-                                                        },
-                                                        children=[
-                                                            html.Div(
-                                                                "Source: MSCI Economic Exposure Data",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
                                                             ),
                                                             html.Div(
-                                                                "SPG CSR | CMGW FRG | VRNC Quanthub",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
+                                                                style=styles['source_footer'],
+                                                                children=[
+                                                                    html.Div(
+                                                                        "Source: MSCI Economic Exposure Data",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                    html.Div(
+                                                                        "SPG CSR | CMGW FRG | VRNC Quanthub",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                ]
                                                             ),
                                                         ]
                                                     ),
+                                                    
                                                     html.Div(
                                                         style=styles['chart'],
                                                         children=[
+                                                            html.Div(
+                                                                "Country Percentage Exposure Trends",
+                                                                style=styles['chart_header']
+                                                            ),
                                                             dcc.Graph(
                                                                 id='country-exposure-pct-graph',
                                                                 config={
@@ -488,31 +519,27 @@ def get_page3(
                                                                     'displaylogo': False,
                                                                 },
                                                                 style=styles['graph']
-                                                            )
-                                                        ]
-                                                    ),
-                                                    html.Div(
-                                                        style={
-                                                            'display': 'flex',
-                                                            'justifyContent': 'space-between',
-                                                            'padding': '10px',
-                                                        },
-                                                        children=[
-                                                            html.Div(
-                                                                "Source: MSCI Economic Exposure Data",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
                                                             ),
                                                             html.Div(
-                                                                "SPG CSR | CMGW FRG | VRNC Quanthub",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
+                                                                style=styles['source_footer'],
+                                                                children=[
+                                                                    html.Div(
+                                                                        "Source: MSCI Economic Exposure Data",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                    html.Div(
+                                                                        "SPG CSR | CMGW FRG | VRNC Quanthub",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                ]
                                                             ),
                                                         ]
                                                     ),
@@ -520,40 +547,37 @@ def get_page3(
                                                     html.Div(
                                                         style=styles['chart'],
                                                         children=[
+                                                            html.Div(
+                                                                "Purchasing Power Parity Analysis",
+                                                                style=styles['chart_header']
+                                                            ),
                                                             dcc.Graph(
                                                                 id='parity-graph',
                                                                 config={
-                                                                    #'responsive': True,
-                                                                    #'autosizable': True,
                                                                     'displayModeBar': True,
-                                                                    #'displaylogo': False,
                                                                 },
                                                                 style=styles['graph']
-                                                            )
-                                                        ]
-                                                    ),
-                                                    html.Div(
-                                                        style={
-                                                            'display': 'flex',
-                                                            'justifyContent': 'space-between',
-                                                            'padding': '10px',
-                                                        },
-                                                        children=[
-                                                            html.Div(
-                                                                "Source: Haver Analytics",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
                                                             ),
                                                             html.Div(
-                                                                "SPG CSR | CMGW FRG | VRNC Quanthub",
-                                                                style={
-                                                                    'fontFamily': "'DM Sans', sans-serif",
-                                                                    'fontSize': '18px',
-                                                                    'color': '#5a5a5a'
-                                                                }
+                                                                style=styles['source_footer'],
+                                                                children=[
+                                                                    html.Div(
+                                                                        "Source: Haver Analytics",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                    html.Div(
+                                                                        "SPG CSR | CMGW FRG | VRNC Quanthub",
+                                                                        style={
+                                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                                            'fontSize': '14px',
+                                                                            'color': '#5a5a5a'
+                                                                        }
+                                                                    ),
+                                                                ]
                                                             ),
                                                         ]
                                                     ),
@@ -571,6 +595,10 @@ def get_page3(
                                     html.Div(
                                         style=styles['chart_two'],
                                         children=[
+                                            html.Div(
+                                                "Corporate Exposure Percentage Bubble Chart",
+                                                style=styles['chart_header']
+                                            ),
                                             dcc.Graph(
                                                 id='percentage-bubble-graph',
                                                 config={
@@ -580,7 +608,28 @@ def get_page3(
                                                     'displaylogo': False,
                                                 },
                                                 style=styles['graph_two']
-                                            )
+                                            ),
+                                            html.Div(
+                                                style=styles['source_footer'],
+                                                children=[
+                                                    html.Div(
+                                                        "Source: MSCI Economic Exposure Data",
+                                                        style={
+                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                            'fontSize': '14px',
+                                                            'color': '#5a5a5a'
+                                                        }
+                                                    ),
+                                                    html.Div(
+                                                        "SPG CSR, CMGW FRG, VRNC Quanthub",
+                                                        style={
+                                                            'fontFamily': "'DM Sans', sans-serif",
+                                                            'fontSize': '14px',
+                                                            'color': '#5a5a5a'
+                                                        }
+                                                    ),
+                                                ]
+                                            ),
                                         ]
                                     ),
                                     html.Div(
@@ -599,7 +648,7 @@ def get_page3(
                                                 }
                                             ),
                                             html.Div(
-                                                "SPG CSR, CMGW FRG, VRNC Quanthub",
+                                                "SPG CSR | CMGW FRG | VRNC Quanthub",
                                                 style={
                                                     'fontFamily': "'DM Sans', sans-serif",
                                                     'fontSize': '18px',
