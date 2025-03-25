@@ -1229,13 +1229,14 @@ def register_callbacks(app):
     # Callback to generate the treemap visualization based on selected security
     @app.callback(
         Output('country-treemap', 'figure'),
+        Output('country-exposure-table', 'rowData'),
         Input('country-security-dropdown', 'value'),
         State('url', 'pathname')
     )
     def update_treemap(selected_security, pathname):
         if pathname != '/country' or not selected_security:
             # Return empty figure if no security is selected
-            return {}
+            return {}, []
         
         # Filter data for the selected security
         security_data = data[data['security_name'] == selected_security]
@@ -1255,15 +1256,41 @@ def register_callbacks(app):
                 plot_bgcolor='white',
                 height=600
             )
-            return fig
+            return fig, []
         
         # Get the latest date for the selected security
         latest_date = security_data['Date'].max()
         latest_data = security_data[security_data['Date'] == latest_date]
         
-        # Instead of grouping and summing, just use the latest percentages directly
-        # This avoids summing across countries and only shows the latest values
-        country_exposure = latest_data[['country_exposure_name', 'country_exposure_pct']].copy()
+        # Filter out "Domestic Exposure" and "International Exposure"
+        filtered_data = latest_data[~latest_data['country_exposure_name'].isin(['Domestic Exposure', 'International Exposure'])]
+        
+        # Prepare table data (for all countries including domestic/international)
+        table_data = latest_data[['country_exposure_name', 'country_exposure_pct', 'country_exposure_revenue']].copy()
+        
+        # Format the revenue values
+        def format_revenue(value):
+            if abs(value) >= 1e9:
+                return f"${value/1e9:.2f}B"
+            elif abs(value) >= 1e6:
+                return f"${value/1e6:.2f}M"
+            else:
+                return f"${value/1e3:.2f}K"
+        
+        table_data['revenue'] = table_data['country_exposure_revenue'].apply(format_revenue)
+        table_data['exposure'] = table_data['country_exposure_pct'].round(2).astype(str) + "%"
+        
+        # Prepare table rows for AG Grid
+        table_rows = table_data.sort_values('country_exposure_pct', ascending=False).rename(
+            columns={
+                'country_exposure_name': 'Country',
+                'exposure': 'Exposure (%)',
+                'revenue': 'Revenue'
+            }
+        )[['Country', 'Exposure (%)', 'Revenue']].to_dict('records')
+        
+        # Using the filtered data (without domestic/international) for the treemap
+        country_exposure = filtered_data[['country_exposure_name', 'country_exposure_pct']].copy()
         
         # Check if all exposure values are zero
         if country_exposure.empty or country_exposure['country_exposure_pct'].sum() == 0:
@@ -1280,7 +1307,7 @@ def register_callbacks(app):
                 plot_bgcolor='white',
                 height=600
             )
-            return fig
+            return fig, table_rows
         
         country_exposure = country_exposure.sort_values('country_exposure_pct', ascending=False)
         
@@ -1330,7 +1357,7 @@ def register_callbacks(app):
                 texttemplate='%{label}<br>%{value:.2f}%'
             )
             
-            return fig
+            return fig, table_rows
             
         except Exception as e:
             # Handle any errors during treemap creation
@@ -1348,4 +1375,4 @@ def register_callbacks(app):
                 plot_bgcolor='white',
                 height=600
             )
-            return fig
+            return fig, table_rows

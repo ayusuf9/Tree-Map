@@ -2,6 +2,7 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 import dash_mantine_components as dmc
+import dash_ag_grid as dag
 
 country_layout = html.Div(
     style={
@@ -84,55 +85,114 @@ country_layout = html.Div(
             ]
         ),
         
-        # Treemap container
+        # Main content container - now with two columns
         html.Div(
             style={
-                'backgroundColor': 'white',
-                'padding': '20px',
-                'borderRadius': '10px',
-                'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)',
-                'marginBottom': '30px'
+                'display': 'flex',
+                'flexDirection': 'row',
+                'flexWrap': 'wrap',
+                'gap': '30px',
             },
             children=[
-                dcc.Graph(
-                    id='country-treemap',
-                    figure={},
-                    style={'height': '600px'},
-                    config={
-                        'displayModeBar': True,
-                        'displaylogo': False,
-                        'modeBarButtonsToRemove': [
-                            'select2d', 'lasso2d', 'resetScale2d',
-                            'hoverClosestCartesian', 'hoverCompareCartesian'
-                        ]
-                    }
+                # Treemap container (left column)
+                html.Div(
+                    style={
+                        'flex': '2',
+                        'minWidth': '500px',
+                        'backgroundColor': 'white',
+                        'padding': '20px',
+                        'borderRadius': '10px',
+                        'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    },
+                    children=[
+                        dcc.Graph(
+                            id='country-treemap',
+                            figure={},
+                            style={'height': '550px'},
+                            config={
+                                'displayModeBar': True,
+                                'displaylogo': False,
+                                'modeBarButtonsToRemove': [
+                                    'select2d', 'lasso2d', 'resetScale2d',
+                                    'hoverClosestCartesian', 'hoverCompareCartesian'
+                                ]
+                            }
+                        )
+                    ]
+                ),
+                
+                # Exposure table container (right column)
+                html.Div(
+                    style={
+                        'flex': '1',
+                        'minWidth': '350px',
+                        'backgroundColor': 'white',
+                        'padding': '20px',
+                        'borderRadius': '10px',
+                        'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    },
+                    children=[
+                        html.H3(
+                            "Country Exposure Data",
+                            style={
+                                'fontSize': '22px',
+                                'fontWeight': 'bold',
+                                'marginBottom': '15px',
+                                'color': '#00294b',
+                                'borderBottom': '1px solid #e0e0e0',
+                                'paddingBottom': '10px',
+                            }
+                        ),
+                        
+                        # AG Grid component for exposure data
+                        dag.AgGrid(
+                            id='country-exposure-table',
+                            rowData=[],
+                            columnDefs=[
+                                {"field": "Country", "headerName": "Country", "sortable": True, "filter": True, "resizable": True},
+                                {"field": "Exposure (%)", "headerName": "Exposure (%)", "sortable": True, "filter": True, "resizable": True},
+                                {"field": "Revenue", "headerName": "Revenue", "sortable": True, "filter": True, "resizable": True},
+                            ],
+                            dashGridOptions={
+                                "domLayout": "autoHeight",
+                                "rowSelection": "single",
+                                "pagination": False,
+                                "paginationAutoPageSize": True,
+                            },
+                            className="ag-theme-alpine",
+                            style={"height": "auto", "width": "100%"},
+                        ),
+                        
+                        # Small footnote
+                        html.Div(
+                            "Sorted by exposure percentage (descending)",
+                            style={
+                                'marginTop': '15px',
+                                'fontSize': '12px',
+                                'fontStyle': 'italic',
+                                'color': '#666'
+                            }
+                        )
+                    ]
                 )
             ]
         ),
         
-        # Information text
+        # Footer with source info
         html.Div(
             style={
-                'marginTop': '20px',
+                'display': 'flex',
+                'justifyContent': 'space-between',
                 'padding': '15px',
+                'marginTop': '20px',
                 'backgroundColor': '#f8f9fa',
                 'borderRadius': '5px',
-                'fontSize': '14px',
-                'color': '#555'
+                'color': '#5a5a5a',
+                'fontSize': '14px'
             },
             children=[
-                html.P(
-                    [
-                        html.Strong("How to use: "),
-                        "Select a sector from the first dropdown, then choose a specific security from the second dropdown to view its country exposure as a treemap visualization. The size of each block represents the percentage of exposure to that country."
-                    ]
-                ),
-                html.P(
-                    [
-                        html.Strong("Hover info: "),
-                        "Hover over each country block to see detailed information about the exposure percentage."
-                    ]
-                )
+                html.Div("Source: MSCI Economic Exposure Data"),
+                html.Div("SPG CSR | CMGW FRG | VRNC Quanthub")
             ]
         )
     ]
