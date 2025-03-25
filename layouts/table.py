@@ -1,4 +1,3 @@
-
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
@@ -123,6 +122,11 @@ label_style = {
 def create_tab_layout():
     filter_row = dbc.Row([
         dbc.Col([
+            html.Label(
+                "Country",
+                style=label_style,
+                className="ms-1"
+            ),
             dcc.Dropdown(
                 id='country-filter',
                 options=[{'label': c, 'value': c} for c in countries],
@@ -132,6 +136,11 @@ def create_tab_layout():
             )
         ], width="auto", className="me-3"),
         dbc.Col([
+            html.Label(
+                "Sector",
+                style=label_style,
+                className="ms-1"
+            ),
             dcc.Dropdown(
                 id='sector-filter',
                 options=[{'label': 'All Sectors', 'value': 'all'}] + [{'label': c, 'value': c} for c in sectors],
@@ -173,22 +182,41 @@ def create_tab_layout():
         rowData=df.to_dict("records"),
         defaultColDef={"flex": 1, "minWidth": 150, "sortable": True, "resizable": True, "filter": True},
         dashGridOptions={
-            'headerHeight':50,
+            'headerHeight': 50,
             "animateRows": False,
-            'pagination':True,
+            'pagination': True,
             "paginationPageSize": 20,
             "suppressRowClickSelection": True,
+            "defaultColDef": {
+                "resizable": True,
+                "sortable": True,
+                "filter": True,
+                "floatingFilter": True
+            },
         },
         className="ag-theme-alpine dbc-ag-grid",
         columnSize="sizeToFit",
         style={"height": "800px", "width": "100%", "--ag-header-background-color": '#F0F0F0'},
-        dangerously_allow_code=True
+        dangerously_allow_code=True,
+        persistence=True,
+        persistence_type="session",
+    )
+
+    # Information loading indicator
+    loading_indicator = dbc.Spinner(
+        id="loading-table-indicator",
+        type="grow",
+        color="primary",
+        fullscreen=False,
+        children=[html.Div(id="loading-table-output")],
     )
 
     return dbc.Container(
         [
             filter_row,
+            loading_indicator,
             grid,
+            html.Div(id="dummy-output-table", style={"display": "none"}),
         ],
         className="dbc dbc-ag-grid",
         style={"marginTop": "20px"},

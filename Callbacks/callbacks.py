@@ -173,14 +173,32 @@ def register_callbacks(app):
     
     # Set up a Flask-Cache instance for the app if it doesn't have one
     if not hasattr(app, 'cache'):
-        cache = Cache(app.server, config={
-            'CACHE_TYPE': 'simple',
-            'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutes cache
-        })
-        app.cache = cache
+        try:
+            cache = Cache(app.server, config={
+                'CACHE_TYPE': 'simple',
+                'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutes cache
+            })
+            app.cache = cache
+            print("Flask-Cache initialized successfully")
+        except Exception as e:
+            print(f"Error initializing Flask-Cache: {str(e)}")
+            # Fallback to a dictionary-based cache
+            app.cache = {'get': lambda k: app._cache.get(k), 
+                        'set': lambda k, v: app._cache.update({k: v})}
+            app._cache = {}
+            print("Using fallback dictionary cache")
     else:
         cache = app.cache
         
+    # Loading indicator for the table page
+    @app.callback(
+        Output("loading-table-output", "children"),
+        [Input("selection-checkbox-grid", "rowData")]
+    )
+    def update_loading_state(data):
+        return ""
+    
+    # This callback handles filtering the grid data
     @app.callback(
         Output("selection-checkbox-grid", "rowData"),
         [
@@ -194,9 +212,22 @@ def register_callbacks(app):
             # Create a cache key based on filter values
             cache_key = f"grid_{selected_country}_{selected_sector}"
             
-            # Check if result is in cache
-            if cache_key in app.cache.cache:
-                return app.cache.cache[cache_key]
+            # Check if we have a real Flask cache or a dictionary fallback
+            if hasattr(app, '_cache'):
+                # Using dictionary fallback
+                cached_result = app._cache.get(cache_key)
+                if cached_result is not None:
+                    return cached_result
+            else:
+                # Using real Flask cache
+                try:
+                    cached_result = app.cache.get(cache_key)
+                    if cached_result is not None:
+                        return cached_result
+                except Exception as e:
+                    print(f"Cache get error: {str(e)}")
+            
+            print(f"Cache miss for {cache_key}, computing fresh result")
             
             # If not in cache, compute and store
             filtered_df = dfb.copy()
@@ -206,7 +237,16 @@ def register_callbacks(app):
                 filtered_df = filtered_df[filtered_df['sector'] == selected_sector]
                 
             result = filtered_df.to_dict('records')
-            app.cache.set(cache_key, result)
+            
+            # Store in appropriate cache
+            if hasattr(app, '_cache'):
+                app._cache[cache_key] = result
+            else:
+                try:
+                    app.cache.set(cache_key, result)
+                except Exception as e:
+                    print(f"Cache set error: {str(e)}")
+            
             return result
         except Exception as e:
             print(f"Error in update_grid: {str(e)}")
