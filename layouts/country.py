@@ -156,11 +156,20 @@ country_layout = html.Div(
                             dashGridOptions={
                                 "domLayout": "autoHeight",
                                 "rowSelection": "single",
-                                "pagination": False,
-                                "paginationAutoPageSize": True,
+                                "pagination": True,
+                                "paginationPageSize": 10,
+                                "paginationAutoPageSize": False,
+                                "defaultColDef": {
+                                    "resizable": True,
+                                    "sortable": True,
+                                    "filter": True,
+                                    "floatingFilter": True
+                                },
+                                "animateRows": False,
+                                "suppressCellSelection": True
                             },
                             className="ag-theme-alpine",
-                            style={"height": "auto", "width": "100%"},
+                            style={"height": "auto", "width": "100%", "minHeight": "400px"},
                         ),
                         
                         # Small footnote

@@ -13,30 +13,67 @@ import dash
 # from components.data_loader import load_exposure_data, load_latest_data
 from components.data_loader import load_exposure_data_s3, load_table_data_s3, load_parity_data_s3
 from pathlib import Path
+from flask_caching import Cache
+import time
 
-dfb = load_table_data_s3()  # pd.read_csv('data/newer_data_table.csv')
-data = load_exposure_data_s3()  # load_latest_data()
-parity_data = load_parity_data_s3()  # pd.read_csv('data/final_haver.csv')
-parity_data['dates'] = pd.to_datetime(parity_data['dates'])
-data['Date'] = pd.to_datetime(data['calculation_date'])
-data['security_name'] = data['security_name'].astype('category')
-data['iso_country_symbol'] = data['iso_country_symbol'].astype('category')
-data['market_type'] = data['market_type'].astype('category')
-data['sedol'] = data['sedol'].astype('category')
-data['security_name'] = data['security_name'].astype(str) + ' (' + data['sedol'].astype(str) + ')'
+# Initialize global variables to store data
+# This prevents reloading data on every callback
+dfb = None
+data = None 
+parity_data = None
+sector_mapping_one = None
 
-data['Year'] = data['Date'].dt.year
-securities_with_data = data['security_name'].tolist()
-data = data[data['security_name'].isin(securities_with_data)]
-data['country_exposure_pct'] = data['country_exposure(pct)']
+def initialize_data():
+    """Load data once at application startup"""
+    global dfb, data, parity_data, sector_mapping_one
+    
+    # Only load if not already loaded
+    if dfb is None:
+        print("Loading table data...")
+        start_time = time.time()
+        dfb = load_table_data_s3()
+        print(f"Table data loaded in {time.time() - start_time:.2f} seconds")
+    
+    if data is None:
+        print("Loading exposure data...")
+        start_time = time.time()
+        data = load_exposure_data_s3()
+        
+        # Process data once to avoid processing in every callback
+        data['Date'] = pd.to_datetime(data['calculation_date'])
+        data['security_name'] = data['security_name'].astype('category')
+        data['iso_country_symbol'] = data['iso_country_symbol'].astype('category')
+        data['market_type'] = data['market_type'].astype('category')
+        data['sedol'] = data['sedol'].astype('category')
+        data['security_name'] = data['security_name'].astype(str) + ' (' + data['sedol'].astype(str) + ')'
+        data['Year'] = data['Date'].dt.year
+        # Get the list of securities that have data
+        securities_with_data = data['security_name'].unique()
+        data = data[data['security_name'].isin(securities_with_data)]
+        data['country_exposure_pct'] = data['country_exposure(pct)']
+        print(f"Exposure data loaded and processed in {time.time() - start_time:.2f} seconds")
+        
+        # Create sector mapping only once
+        sector_mapping_one = dict(
+            zip(
+                data['security_name'].apply(lambda x: x.split(' (')[0]),
+                data['sector']
+            )
+        )
+    
+    if parity_data is None:
+        print("Loading parity data...")
+        start_time = time.time()
+        parity_data = load_parity_data_s3()
+        parity_data['dates'] = pd.to_datetime(parity_data['dates'])
+        print(f"Parity data loaded in {time.time() - start_time:.2f} seconds")
+        
+    return dfb, data, parity_data, sector_mapping_one
 
-sector_mapping_one = dict(
-    zip(
-        data['security_name'].apply(lambda x: x.split(' (')[0]),
-        data['sector']
-    )
-)
-
+# Cache for storing processed data results
+table_sectors_cache = {}
+table_securities_cache = {}
+treemap_data_cache = {}
 
 def get_max_date(fig):
     if not fig.data or len(fig.data) == 0:
@@ -130,6 +167,20 @@ colors_to_use = [cgs_color_pallet['sapphire'], cgs_color_pallet['ocean']]
 
 
 def register_callbacks(app):
+    # Initialize data when app starts
+    global dfb, data, parity_data, sector_mapping_one
+    dfb, data, parity_data, sector_mapping_one = initialize_data()
+    
+    # Set up a Flask-Cache instance for the app if it doesn't have one
+    if not hasattr(app, 'cache'):
+        cache = Cache(app.server, config={
+            'CACHE_TYPE': 'simple',
+            'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutes cache
+        })
+        app.cache = cache
+    else:
+        cache = app.cache
+        
     @app.callback(
         Output("selection-checkbox-grid", "rowData"),
         [
@@ -140,12 +191,23 @@ def register_callbacks(app):
     )
     def update_grid(selected_country, selected_sector):
         try:
+            # Create a cache key based on filter values
+            cache_key = f"grid_{selected_country}_{selected_sector}"
+            
+            # Check if result is in cache
+            if cache_key in app.cache.cache:
+                return app.cache.cache[cache_key]
+            
+            # If not in cache, compute and store
             filtered_df = dfb.copy()
             if selected_country:
                 filtered_df = filtered_df[filtered_df['country_exposure_name'] == selected_country]
             if selected_sector and selected_sector != 'all':
                 filtered_df = filtered_df[filtered_df['sector'] == selected_sector]
-            return filtered_df.to_dict('records')
+                
+            result = filtered_df.to_dict('records')
+            app.cache.set(cache_key, result)
+            return result
         except Exception as e:
             print(f"Error in update_grid: {str(e)}")
             return dfb.to_dict('records')
@@ -1196,10 +1258,21 @@ def register_callbacks(app):
     def update_country_sectors(pathname):
         if pathname != '/country':
             return no_update, no_update
+        
+        # Use cached data if available
+        if 'sectors' in table_sectors_cache:
+            sectors = table_sectors_cache['sectors']
+            options = table_sectors_cache['options']
+        else:
+            # Get unique sectors from the data
+            start_time = time.time()
+            sectors = sorted(data['sector'].unique())
+            options = [{'label': sector, 'value': sector} for sector in sectors]
             
-        # Get unique sectors from the data
-        sectors = sorted(data['sector'].unique())
-        options = [{'label': sector, 'value': sector} for sector in sectors]
+            # Cache the result
+            table_sectors_cache['sectors'] = sectors
+            table_sectors_cache['options'] = options
+            print(f"Sectors computed in {time.time() - start_time:.2f} seconds")
         
         # Set the default value to the first sector
         default_value = sectors[0] if sectors else None
@@ -1217,9 +1290,23 @@ def register_callbacks(app):
         if pathname != '/country' or not selected_sector:
             return no_update, no_update
         
-        # Filter securities by selected sector
-        filtered_securities = data[data['sector'] == selected_sector]['security_name'].unique()
-        options = [{'label': security, 'value': security} for security in filtered_securities]
+        # Use cached data if available
+        cache_key = f"securities_{selected_sector}"
+        if cache_key in table_securities_cache:
+            options = table_securities_cache[cache_key]['options']
+            filtered_securities = table_securities_cache[cache_key]['securities']
+        else:
+            # Filter securities by selected sector
+            start_time = time.time()
+            filtered_securities = data[data['sector'] == selected_sector]['security_name'].unique()
+            options = [{'label': security, 'value': security} for security in filtered_securities]
+            
+            # Cache the result
+            table_securities_cache[cache_key] = {
+                'options': options,
+                'securities': filtered_securities
+            }
+            print(f"Securities for {selected_sector} computed in {time.time() - start_time:.2f} seconds")
         
         # Set the default value to the first security
         default_value = filtered_securities[0] if len(filtered_securities) > 0 else None
@@ -1237,6 +1324,13 @@ def register_callbacks(app):
         if pathname != '/country' or not selected_security:
             # Return empty figure if no security is selected
             return {}, []
+        
+        # Use cached data if available
+        cache_key = f"treemap_{selected_security}"
+        if cache_key in treemap_data_cache:
+            return treemap_data_cache[cache_key]['figure'], treemap_data_cache[cache_key]['table_rows']
+        
+        start_time = time.time()
         
         # Filter data for the selected security
         security_data = data[data['security_name'] == selected_security]
@@ -1307,6 +1401,9 @@ def register_callbacks(app):
                 plot_bgcolor='white',
                 height=600
             )
+            result = {'figure': fig, 'table_rows': table_rows}
+            treemap_data_cache[cache_key] = result
+            print(f"Treemap for {selected_security} computed in {time.time() - start_time:.2f} seconds")
             return fig, table_rows
         
         country_exposure = country_exposure.sort_values('country_exposure_pct', ascending=False)
@@ -1356,6 +1453,11 @@ def register_callbacks(app):
                 hovertemplate='<b>%{label}</b><br>Exposure: %{value:.2f}%<extra></extra>',
                 texttemplate='%{label}<br>%{value:.2f}%'
             )
+            
+            # Cache the result
+            result = {'figure': fig, 'table_rows': table_rows}
+            treemap_data_cache[cache_key] = result
+            print(f"Treemap for {selected_security} computed in {time.time() - start_time:.2f} seconds")
             
             return fig, table_rows
             
